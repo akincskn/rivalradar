@@ -31,7 +31,7 @@ export async function triggerAnalysis(
   const n8nSecret = process.env.N8N_WEBHOOK_SECRET;
 
   if (!n8nWebhookUrl) {
-    return { success: false, error: "N8N webhook URL yapılandırılmamış" };
+    return { success: false, error: "N8N webhook URL not configured" };
   }
 
   const controller = new AbortController();
@@ -54,7 +54,7 @@ export async function triggerAnalysis(
       const errorText = await response.text();
       return {
         success: false,
-        error: `N8N yanıt hatası: ${response.status} - ${errorText}`,
+        error: `N8N response error: ${response.status} - ${errorText}`,
       };
     }
 
@@ -62,20 +62,20 @@ export async function triggerAnalysis(
     if (!responseText || !responseText.trim()) {
       return {
         success: false,
-        error: "N8N boş yanıt döndürdü — workflow bir node'da hata aldı. N8N Executions'ı kontrol et.",
+        error: "N8N returned empty response — workflow failed on a node. Check N8N Executions.",
       };
     }
     const rawData: unknown = JSON.parse(responseText);
     const parsed = n8nResponseSchema.safeParse(rawData);
 
     if (!parsed.success) {
-      return { success: false, error: "N8N yanıt formatı geçersiz" };
+      return { success: false, error: "Invalid N8N response format" };
     }
 
     if (!parsed.data.success) {
       return {
         success: false,
-        error: parsed.data.error ?? "N8N analiz başarısız",
+        error: parsed.data.error ?? "N8N analysis failed",
       };
     }
 
@@ -87,13 +87,13 @@ export async function triggerAnalysis(
     clearTimeout(timeoutId);
 
     if (error instanceof Error && error.name === "AbortError") {
-      return { success: false, error: "Analiz zaman aşımına uğradı (55s)" };
+      return { success: false, error: "Analysis timed out (55s)" };
     }
 
     const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
     return {
       success: false,
-      error: `N8N bağlantı hatası: ${errMsg}`,
+      error: `N8N connection error: ${errMsg}`,
     };
   }
 }
