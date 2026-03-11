@@ -1,46 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { reportIdSchema } from "@/lib/validations/analyze";
+import { reportService } from "@/lib/services/report.service";
+import { withErrorHandler } from "@/lib/utils/api-handler";
+import { ValidationError } from "@/lib/errors/app-errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  try {
+export const GET = withErrorHandler(
+  async (_request: NextRequest, { params }: RouteParams) => {
     const session = await auth();
     const cookieStore = await cookies();
     const guestId = cookieStore.get("guestId")?.value;
 
     const { id } = await params;
     const parsed = reportIdSchema.safeParse({ id });
+    if (!parsed.success) throw new ValidationError("Invalid report ID");
 
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid report ID" }, { status: 400 });
-    }
-
-    // userId veya guestId ile erişim — authorization
-    const report = await prisma.report.findFirst({
-      where: {
-        id: parsed.data.id,
-        OR: [
-          { userId: session?.user?.id ?? "none" },
-          { guestId: guestId ?? "none" },
-        ],
-      },
+    const report = await reportService.getReport(parsed.data.id, {
+      userId: session?.user?.id,
+      guestId,
     });
 
-    if (!report) {
-      return NextResponse.json({ error: "Report not found" }, { status: 404 });
-    }
-
     return NextResponse.json({ report }, { status: 200 });
-  } catch {
-    return NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    );
   }
-}
+);

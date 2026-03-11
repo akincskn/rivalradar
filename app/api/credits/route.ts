@@ -1,31 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { creditService } from "@/lib/services/credit.service";
+import { withErrorHandler } from "@/lib/utils/api-handler";
+import { UnauthorizedError } from "@/lib/errors/app-errors";
 
-export async function GET() {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
-    }
+export const GET = withErrorHandler(async () => {
+  const session = await auth();
+  if (!session?.user?.id) throw new UnauthorizedError();
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { credits: true },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ credits: user.credits }, { status: 200 });
-  } catch {
-    return NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    );
-  }
-}
+  const { credits } = await creditService.checkUser(session.user.id);
+  return NextResponse.json({ credits }, { status: 200 });
+});

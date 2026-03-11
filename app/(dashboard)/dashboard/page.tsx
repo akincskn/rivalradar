@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { userRepository } from "@/lib/repositories/user.repository";
+import { reportRepository } from "@/lib/repositories/report.repository";
 import { ReportList } from "@/components/dashboard/ReportList";
 import { CreditBadge } from "@/components/dashboard/CreditBadge";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -19,22 +20,8 @@ export default async function DashboardPage() {
   }
 
   const [user, reports] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { name: true, image: true, credits: true },
-    }),
-    prisma.report.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: {
-        id: true,
-        companyName: true,
-        sector: true,
-        status: true,
-        createdAt: true,
-      },
-    }),
+    userRepository.findProfile(session.user.id),
+    reportRepository.findByUserId(session.user.id),
   ]);
 
   return (
