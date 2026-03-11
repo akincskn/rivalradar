@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { reportIdSchema } from "@/lib/validations/analyze";
 import { GuestBanner } from "@/components/report/GuestBanner";
 import { PrintButton } from "@/components/report/PrintButton";
+import { AutoRefresh } from "@/components/report/AutoRefresh";
 import { Navbar } from "@/components/layout/Navbar";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -26,6 +27,11 @@ interface ReportPageProps {
 export async function generateMetadata({ params }: ReportPageProps): Promise<Metadata> {
   const { id } = await params;
   return { title: `Report #${id.slice(0, 8)}`, description: "AI-powered competitor analysis report" };
+}
+
+function sanitizeUrl(url: string | null): string | null {
+  if (!url) return null;
+  return /^https?:\/\//i.test(url) ? url : null;
 }
 
 function parseReportData(value: unknown): ReportData | null {
@@ -131,10 +137,14 @@ export default async function ReportPage({ params }: ReportPageProps) {
 
       {/* Durum: İşleniyor / Başarısız */}
       {(report.status === "processing" || report.status === "pending") && (
-        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
-          <p className="text-muted-foreground">Analysis in progress...</p>
-        </div>
+        <>
+          <AutoRefresh intervalMs={5000} />
+          <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+            <p className="text-muted-foreground">Analysis in progress...</p>
+            <p className="text-xs text-muted-foreground">This page refreshes automatically every 5 seconds.</p>
+          </div>
+        </>
       )}
 
       {report.status === "failed" && (
@@ -173,10 +183,10 @@ export default async function ReportPage({ params }: ReportPageProps) {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h3 className="font-medium">{c.name}</h3>
-                      {c.website && (
-                        <a href={c.website} target="_blank" rel="noopener noreferrer"
+                      {sanitizeUrl(c.website) && (
+                        <a href={sanitizeUrl(c.website)!} target="_blank" rel="noopener noreferrer"
                           className="text-xs text-primary hover:underline">
-                          {c.website.replace(/^https?:\/\//, "")}
+                          {c.website!.replace(/^https?:\/\//, "")}
                         </a>
                       )}
                     </div>
