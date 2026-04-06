@@ -1,21 +1,16 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import authConfig from "./auth.config";
 
 /**
- * NextAuth v5 ile Google OAuth.
- * NEDEN PrismaAdapter: Session ve Account kayıtlarını otomatik yönetir,
- * elle tablo oluşturmaya gerek kalmaz.
+ * Server-only auth config — PrismaAdapter ile tam config.
+ * NEDEN ayrı dosya: middleware Edge Runtime'da çalışır, Prisma Edge'i desteklemez.
+ * API route'lar ve server component'lar bu dosyadan import eder.
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
   callbacks: {
     async session({ session, user }) {
       // NEDEN: NextAuth session'a user.id default eklemiyor,
@@ -39,8 +34,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       });
     },
-  },
-  pages: {
-    signIn: "/login",
   },
 });
